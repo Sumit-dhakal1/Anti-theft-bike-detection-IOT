@@ -210,6 +210,7 @@ app.post("/esp32/data", (req, res) => {
         alarm,
         mode: settings.mode
       });
+      // hell world
 
       if (alarm) sendAlarmEmail(data);
       console.log(`✓ ESP32 | ${settings.mode} | Mag:${magnitude.toFixed(2)} | Alarm:${alarm}`);
