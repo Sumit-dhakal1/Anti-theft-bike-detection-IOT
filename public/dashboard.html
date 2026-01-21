@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anti-Theft Bike Detection Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Anti-Theft Bike Detection</h1>
+      <p>Real-time data from the ESP32 sensor module</p>
+      <div class="header-controls">
+        <span id="username-display"></span>
+        <button onclick="handleLogout()" class="btn-logout">Logout</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="mode-control">
+        <h2>Mode Control</h2>
+        <div class="mode-buttons">
+          <button id="safe-mode-btn" class="mode-btn" onclick="setMode('safe')">
+            Safe Mode
+          </button>
+          <button id="lock-mode-btn" class="mode-btn" onclick="setMode('lock')">
+            Lock Mode
+          </button>
+        </div>
+        <p class="mode-status">
+          <strong>Current Mode:</strong>
+          <span id="current-mode">Loading...</span>
+        </p>
+        <p class="mode-description" id="mode-description">Loading...</p>
+      </section>
+
+      <section id="status">
+        <h2>System Status</h2>
+        <p>
+          <strong>Alarm Status:</strong>
+          <span id="alarm-status">Loading...</span>
+        </p>
+        <p>
+          <strong>GPS Coordinates:</strong>
+          <span id="gps-coordinates">Loading...</span>
+        </p>
+        <p>
+          <strong>Last Update:</strong> <span id="last-update">Loading...</span>
+        </p>
+      </section>
+      <section id="acceleration">
+        <h2>Acceleration Data</h2>
+        <p>
+          <strong>Magnitude:</strong> <span id="magnitude">Loading...</span> g
+        </p>
+        <p><strong>Accel X:</strong> <span id="accel-x">Loading...</span> g</p>
+        <p><strong>Accel Y:</strong> <span id="accel-y">Loading...</span> g</p>
+        <p><strong>Accel Z:</strong> <span id="accel-z">Loading...</span> g</p>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2026 Anti-Theft Bike Detection System</p>
+    </footer>
+
+    <script src="dashboard.js"></script>
+  </body>
+</html>

@@ -1,0 +1,147 @@
+from machine import Pin, I2C, UART
+import time
+import math
+import network
+import urequests
+
+
+PIN_SDA = 21
+PIN_SCL = 22
+PIN_GPS_RX = 25  
+PIN_GPS_TX = 26  
+PIN_BUZZER = 5
+sda = Pin(PIN_SDA)
+scl = Pin(PIN_SCL)
+buzzer = Pin(PIN_BUZZER, Pin.OUT)
+buzzer.off()
+
+# 2) MPU6050 SETUP
+MPU_ADDR = 0x68
+i2c = I2C(0, scl=scl, sda=sda, freq=400000)
+devices = i2c.scan()
+print("I2C devices found:", [hex(d) for d in devices])
+if MPU_ADDR in devices:
+    i2c.writeto_mem(MPU_ADDR, 0x6B, b'\x00')
+else:
+    print("MPU6050 not detected. Check wiring.")
+
+def read_word(reg):
+    data = i2c.readfrom_mem(MPU_ADDR, reg, 2)
+    value = (data[0] << 8) | data[1]
+    if value > 32767:
+        value -= 65536
+    return value
+
+def get_acceleration():
+    ax = read_word(0x3B) / 16384.0
+    ay = read_word(0x3D) / 16384.0
+    az = read_word(0x3F) / 16384.0
+    return ax, ay, az
+
+gps = UART(2, baudrate=9600, rx=PIN_GPS_RX, tx=PIN_GPS_TX, timeout=1000)
+
+def nmea_to_decimal(raw, direction):
+    if not raw:
+        return None
+    deg = float(raw[:2])
+    minutes = float(raw[2:])
+    dec = deg + minutes / 60
+    if direction in ['S', 'W']:
+        dec = -dec
+    return round(dec, 6)
+
+def read_gps_coordinates():
+    if gps.any():
+        line = gps.readline()
+        if not line:
+            return None
+        line = line.decode("utf-8", "ignore").strip()
+        parts = line.split(",")
+        if line.startswith("$GPGGA") or line.startswith("$GNGGA"):
+            if len(parts) > 5 and parts[2] and parts[4]:
+                lat = nmea_to_decimal(parts[2], parts[3])
+                lon = nmea_to_decimal(parts[4], parts[5])
+                return lat, lon
+        if line.startswith("$GPRMC") or line.startswith("$GNRMC"):
+            if len(parts) > 6 and parts[3] and parts[5]:
+                lat = nmea_to_decimal(parts[3], parts[4])
+                lon = nmea_to_decimal(parts[5], parts[6])
+                return lat, lon
+    return None
+
+# 4) Wi-Fi CONNECTION
+def connect_wifi(ssid, password):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        print('Connecting to network...')
+        wlan.connect(ssid, password)
+        while not wlan.isconnected():
+            time.sleep(1)
+    print('Network config:', wlan.ifconfig())
+
+# Replace with your Wi-Fi credentials
+SSID = 'pragyan09_fdllri_2'
+PASSWORD = 'pk+bs+sd'
+connect_wifi(SSID, PASSWORD)
+
+current_mode = "safe"  
+
+def send_data_to_server(lat, lon, ax, ay, az):
+    global current_mode
+    url = "http://192.168.1.64.100:3000/api/data"  
+    data = {
+        'gps_latitude': lat,
+        'gps_longitude': lon,
+        'accel_x': ax,
+        'accel_y': ay,
+        'accel_z': az,
+    }
+    try:
+        response = urequests.post(url, json=data)
+        print("Server response:", response.status_code)
+        
+        if response.status_code == 200:
+            try:
+                result = response.json()
+                current_mode = result.get('mode', 'safe')
+                print("Mode from server:", current_mode)
+            except Exception as json_err:
+                print("Error parsing response:", str(json_err))
+        else:
+            print("Server returned error code:", response.status_code)
+        
+        response.close()
+    except OSError as e:
+        print("Network error:", str(e))
+    except Exception as e:
+        print("Error sending data:", str(e))
+
+# 6) MAIN LOOP WITH MODE SUPPORT
+print("Anti-Theft Bike Detection - Safe/Lock Mode System")
+THRESHOLD = 1.3
+
+while True:
+    ax, ay, az = get_acceleration()
+    mag = math.sqrt(ax*ax + ay*ay + az*az)
+    
+    # Only trigger alarm and buzzer in LOCK mode
+    alarm = False
+    if current_mode == "lock":
+        alarm = mag > THRESHOLD
+        buzzer.value(1 if alarm else 0)
+    else:
+        buzzer.value(0)
+
+    mode_display = current_mode.upper()
+    print(f"Mode: {mode_display} | Accel[g] X={ax:.2f} Y={ay:.2f} Z={az:.2f} | Mag={mag:.2f} | {'ALARM ON' if alarm else 'Normal'}")
+
+    gps_data = read_gps_coordinates()
+    if gps_data:
+        lat, lon = gps_data
+        print(f"GPS Fix -> Latitude: {lat}, Longitude: {lon}")
+        send_data_to_server(lat, lon, ax, ay, az)
+    else:
+        send_data_to_server(None, None, ax, ay, az)
+
+    time.sleep(1)
