@@ -1,6 +1,6 @@
-/*************************************************
+/*
  * ANTI-THEFT BIKE DETECTION SERVER (FINAL)
- *************************************************/
+ */
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -27,15 +27,15 @@ app.use(cors({
 app.use(express.json({ limit: "10kb" }));
 app.use(express.static("public"));
 
-/* 🔴 ESP32 SAFE CONNECTION */
+/* ESP32 SAFE CONNECTION */
 app.use((req, res, next) => {
   res.setHeader("Connection", "close");
   next();
 });
 
-/* =========================================
+/* 
    SESSION (DASHBOARD ONLY)
-========================================= */
+*/
 app.use(session({
   name: "anti-theft-session",
   secret: "anti-theft-bike-secret-key-2026",
@@ -176,16 +176,16 @@ app.post("/api/settings", requireAuth, async (req, res) => {
 });
 
 /* =========================================
-   🔥 ESP32 SAFE ENDPOINT (NO SESSION)
+   ESP32 SAFE ENDPOINT (NO SESSION)
 ========================================= */
 app.post("/esp32/data", (req, res) => {
-  /* 🚀 RESPOND FIRST - Include current mode */
+
   setImmediate(async () => {
     try {
       const settings = await Settings.findOne() || new Settings();
       res.status(200).json({ 
         status: "ok",
-        mode: settings.mode,  // ✅ Send current mode to ESP32
+        mode: settings.mode,
         threshold: settings.threshold
       });
       
